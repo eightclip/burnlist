@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BURNLIST</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --border: #222222;
+    --accent: #ff3c00;
+    --accent2: #ffb800;
+    --text: #e8e8e8;
+    --muted: #555;
+    --green: #00e676;
+    --red: #ff1744;
+    --mono: 'Share Tech Mono', monospace;
+    --display: 'Bebas Neue', sans-serif;
+    --body: 'DM Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 40px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .logo {
+    font-family: var(--display);
+    font-size: 52px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .tagline {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    align-self: flex-end;
+    padding-bottom: 6px;
+  }
+
+  .cd-spin {
+    margin-left: auto;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: conic-gradient(
+      from 0deg,
+      #1a1a1a 0deg,
+      #333 60deg,
+      #1a1a1a 120deg,
+      #444 180deg,
+      #1a1a1a 240deg,
+      #333 300deg,
+      #1a1a1a 360deg
+    );
+    box-shadow: 0 0 0 2px #333, inset 0 0 0 6px #0a0a0a;
+    animation: spin 4s linear infinite paused;
+    flex-shrink: 0;
+  }
+  .cd-spin.spinning { animation-play-state: running; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  main {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 40px 80px;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* URL input */
+  .url-input-wrap {
+    position: relative;
+    margin-bottom: 10px;
+  }
+
+  #urlInput {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 16px 20px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  #urlInput:focus {
+    border-color: #444;
+    border-left-color: var(--accent);
+  }
+  #urlInput::placeholder { color: #333; }
+  #urlInput.invalid { border-left-color: var(--red); }
+
+  .input-hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 28px;
+  }
+
+  .burn-btn {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--accent);
+    border: none;
+    color: #000;
+    font-family: var(--display);
+    font-size: 28px;
+    letter-spacing: 3px;
+    padding: 14px 36px;
+    cursor: pointer;
+    transition: all 0.15s;
+    width: 100%;
+    justify-content: center;
+  }
+  .burn-btn:hover { background: #ff5722; transform: translateY(-1px); }
+  .burn-btn:active { transform: translateY(0); }
+  .burn-btn:disabled { background: #333; color: #555; cursor: not-allowed; transform: none; }
+  .burn-icon { font-size: 22px; }
+  .burn-btn:not(:disabled):hover .burn-icon { animation: flicker 0.3s infinite; }
+  @keyframes flicker { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
+
+  /* Phase bar */
+  .phase-bar {
+    display: flex;
+    margin-bottom: 28px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+  }
+  .phase-item {
+    flex: 1;
+    padding: 8px 4px;
+    text-align: center;
+    color: var(--muted);
+    border-bottom: 2px solid var(--border);
+    text-transform: uppercase;
+    transition: all 0.3s;
+  }
+  .phase-item.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .phase-item.complete { color: var(--green); border-bottom-color: var(--green); }
+
+  /* Album meta */
+  #album-meta {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 28px;
+    padding: 16px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    animation: fadeIn 0.4s ease forwards;
+  }
+
+  #album-art {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    flex-shrink: 0;
+    background: #1a1a1a;
+  }
+
+  .album-name-display {
+    font-family: var(--display);
+    font-size: 26px;
+    letter-spacing: 2px;
+    line-height: 1.1;
+  }
+
+  .album-track-count {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    margin-top: 4px;
+    text-transform: uppercase;
+  }
+
+  /* Fetching state */
+  #fetch-state {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 32px 0;
+    animation: pulse 1.5s ease infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity:0.4; } 50% { opacity:1; } }
+
+  /* Queue */
+  .tl-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+  }
+
+  .tl-title {
+    font-family: var(--display);
+    font-size: 24px;
+    letter-spacing: 2px;
+  }
+
+  .tl-counter {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .progress-wrap {
+    background: var(--border);
+    height: 2px;
+    margin-bottom: 4px;
+  }
+  .progress-bar {
+    height: 2px;
+    background: var(--accent);
+    transition: width 0.4s ease;
+    width: 0%;
+  }
+
+  /* Track rows */
+  .track-row {
+    display: grid;
+    grid-template-columns: 36px 1fr 110px;
+    align-items: center;
+    gap: 16px;
+    padding: 11px 0;
+    border-bottom: 1px solid #161616;
+    animation: fadeIn 0.25s ease forwards;
+    opacity: 0;
+  }
+  @keyframes fadeIn { to { opacity: 1; } }
+
+  .track-num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .track-name {
+    font-family: var(--body);
+    font-size: 14px;
+    font-weight: 300;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .track-status {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-align: right;
+    text-transform: uppercase;
+  }
+
+  .status-queued     { color: var(--muted); }
+  .status-downloading { color: var(--accent2); animation: pulse 1s ease infinite; }
+  .status-done       { color: var(--green); }
+  .status-error      { color: var(--red); }
+
+  /* Download zone */
+  #download-zone {
+    display: none;
+    margin-top: 32px;
+    border: 1px solid var(--green);
+    padding: 24px 32px;
+    text-align: center;
+    animation: glow 2s ease infinite;
+  }
+  @keyframes glow {
+    0%,100% { box-shadow: 0 0 0 rgba(0,230,118,0); }
+    50%      { box-shadow: 0 0 20px rgba(0,230,118,0.15); }
+  }
+
+  .dl-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--green);
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+
+  .dl-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--green);
+    color: #000;
+    font-family: var(--display);
+    font-size: 26px;
+    letter-spacing: 2px;
+    padding: 12px 32px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .dl-btn:hover { background: #69f0ae; transform: translateY(-1px); }
+
+  .dl-note {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+
+  /* Error zone */
+  #error-zone {
+    display: none;
+    margin-top: 24px;
+    border: 1px solid var(--red);
+    padding: 16px 20px;
+  }
+
+  #errorMsg {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--red);
+    letter-spacing: 1px;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .reset-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 8px 16px;
+    cursor: pointer;
+    text-transform: uppercase;
+    margin-top: 20px;
+    transition: all 0.2s;
+  }
+  .reset-btn:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">BURNLIST</div>
+  <div class="tagline">CD-ready MP3 compiler</div>
+  <div class="cd-spin" id="cdDisc"></div>
+</header>
+
+<main>
+
+  <!-- Input -->
+  <div id="input-section">
+    <div class="section-label">01 / Paste a Spotify URL</div>
+    <div class="url-input-wrap">
+      <input type="url" id="urlInput"
+        placeholder="https://open.spotify.com/album/..."
+        autocomplete="off" spellcheck="false"
+        onkeydown="if(event.key==='Enter')startBurn()">
+    </div>
+    <div class="input-hint">Track, album, or playlist URLs accepted</div>
+    <button class="burn-btn" id="burnBtn" onclick="startBurn()">
+      <span class="burn-icon">&#9654;</span> BURN THIS
+    </button>
+  </div>
+
+  <!-- Progress -->
+  <div id="progress-section" style="display:none">
+
+    <div class="phase-bar">
+      <div class="phase-item" id="phase-fetching">Fetching</div>
+      <div class="phase-item" id="phase-downloading">Downloading</div>
+      <div class="phase-item" id="phase-zipping">Zipping</div>
+      <div class="phase-item" id="phase-ready">Ready</div>
+    </div>
+
+    <div id="fetch-state">Resolving tracklist...</div>
+
+    <div id="album-meta" style="display:none">
+      <img id="album-art" src="" alt="">
+      <div>
+        <div class="album-name-display" id="albumNameDisplay"></div>
+        <div class="album-track-count" id="albumTrackCount"></div>
+      </div>
+    </div>
+
+    <div id="queue-section" style="display:none">
+      <div class="tl-header">
+        <div class="tl-title">QUEUE</div>
+        <div class="tl-counter" id="counter">0 / 0</div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div id="trackRows"></div>
+    </div>
+
+    <div id="download-zone">
+      <div class="dl-label">Burn complete &mdash; ZIP ready</div>
+      <button class="dl-btn" onclick="downloadZip()">&#8595; DOWNLOAD ZIP</button>
+      <div class="dl-note" id="dlNote"></div>
+    </div>
+
+    <div id="error-zone">
+      <div id="errorMsg"></div>
+    </div>
+
+    <button class="reset-btn" onclick="reset()">&#8592; Start over</button>
+
+  </div>
+
+</main>
+
+<script>
+let jobId = null;
+let pollTimer = null;
+let tracksBuilt = false;
+
+function startBurn() {
+  const url = document.getElementById('urlInput').value.trim();
+  const input = document.getElementById('urlInput');
+
+  if (!url || !url.includes('open.spotify.com')) {
+    input.classList.add('invalid');
+    input.focus();
+    return;
+  }
+  input.classList.remove('invalid');
+
+  document.getElementById('burnBtn').disabled = true;
+  document.getElementById('input-section').style.display = 'none';
+  document.getElementById('progress-section').style.display = 'block';
+  document.getElementById('cdDisc').classList.add('spinning');
+
+  fetch('/start', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url })
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.error) { showError(data.error); return; }
+    jobId = data.job_id;
+    pollTimer = setInterval(poll, 1500);
+  })
+  .catch(err => showError(String(err)));
+}
+
+async function poll() {
+  if (!jobId) return;
+  let data;
+  try {
+    const r = await fetch(`/status?job=${jobId}`);
+    data = await r.json();
+  } catch (e) {
+    return;
+  }
+
+  const phase = data.phase;
+
+  // Phase bar
+  setPhase(phase);
+
+  // Error state
+  if (phase === 'error') {
+    clearInterval(pollTimer);
+    document.getElementById('cdDisc').classList.remove('spinning');
+    showError(data.error || 'An error occurred');
+    return;
+  }
+
+  // Album metadata - show once we have it
+  if (data.album_name && document.getElementById('album-meta').style.display === 'none') {
+    document.getElementById('fetch-state').style.display = 'none';
+    document.getElementById('albumNameDisplay').textContent = data.album_name;
+    document.getElementById('albumTrackCount').textContent =
+      `${data.total} track${data.total !== 1 ? 's' : ''}`;
+    const art = document.getElementById('album-art');
+    if (data.artwork_url) {
+      art.src = data.artwork_url;
+      art.style.display = 'block';
+    } else {
+      art.style.display = 'none';
+    }
+    document.getElementById('album-meta').style.display = 'flex';
+  }
+
+  // Track rows - build once when tracks arrive
+  const tracks = data.tracks || {};
+  const trackCount = Object.keys(tracks).length;
+  if (trackCount > 0 && !tracksBuilt) {
+    buildTrackRows(tracks, data.total);
+    document.getElementById('queue-section').style.display = 'block';
+    tracksBuilt = true;
+  }
+
+  if (tracksBuilt) {
+    updateTrackStatuses(tracks, data.total);
+  }
+
+  // Done
+  if (phase === 'ready') {
+    clearInterval(pollTimer);
+    document.getElementById('cdDisc').classList.remove('spinning');
+    document.getElementById('progressBar').style.width = '100%';
+    document.getElementById('progressBar').style.background = 'var(--green)';
+    document.getElementById('download-zone').style.display = 'block';
+    const errors = countErrors(tracks);
+    const note = errors > 0
+      ? `${trackCount - errors} tracks downloaded, ${errors} failed`
+      : `${trackCount} tracks, full ID3 metadata`;
+    document.getElementById('dlNote').textContent = note;
+  }
+}
+
+function buildTrackRows(tracks, total) {
+  const container = document.getElementById('trackRows');
+  container.innerHTML = '';
+  const keys = sortedKeys(tracks);
+  keys.forEach((k, i) => {
+    const t = tracks[k];
+    const row = document.createElement('div');
+    row.className = 'track-row';
+    row.id = `row-${k}`;
+    row.style.animationDelay = `${i * 30}ms`;
+    row.innerHTML = `
+      <div class="track-num">${String(parseInt(k)).padStart(2, '0')}</div>
+      <div class="track-name">${esc(t.artist)} &mdash; ${esc(t.title)}</div>
+      <div class="track-status status-queued" id="status-${k}">queued</div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function updateTrackStatuses(tracks, total) {
+  let done = 0, errors = 0;
+  Object.entries(tracks).forEach(([k, t]) => {
+    const el = document.getElementById(`status-${k}`);
+    if (el) {
+      el.className = `track-status status-${t.status}`;
+      el.textContent = statusLabel(t.status);
+    }
+    if (t.status === 'done') done++;
+    if (t.status === 'error') errors++;
+  });
+  const finished = done + errors;
+  document.getElementById('counter').textContent = `${done} / ${total}`;
+  if (total > 0) {
+    document.getElementById('progressBar').style.width = `${(finished / total) * 100}%`;
+  }
+}
+
+function setPhase(phase) {
+  const order = ['fetching', 'downloading', 'zipping', 'ready'];
+  const idx = order.indexOf(phase);
+  order.forEach((p, i) => {
+    const el = document.getElementById(`phase-${p}`);
+    if (!el) return;
+    el.className = 'phase-item';
+    if (i < idx) el.classList.add('complete');
+    else if (i === idx) el.classList.add('active');
+  });
+}
+
+function showError(msg) {
+  document.getElementById('errorMsg').textContent = msg;
+  document.getElementById('error-zone').style.display = 'block';
+  document.getElementById('fetch-state').style.display = 'none';
+}
+
+function downloadZip() {
+  window.location.href = `/download?job=${jobId}`;
+}
+
+function reset() {
+  clearInterval(pollTimer);
+  jobId = null;
+  pollTimer = null;
+  tracksBuilt = false;
+
+  document.getElementById('input-section').style.display = 'block';
+  document.getElementById('progress-section').style.display = 'none';
+  document.getElementById('download-zone').style.display = 'none';
+  document.getElementById('error-zone').style.display = 'none';
+  document.getElementById('album-meta').style.display = 'none';
+  document.getElementById('queue-section').style.display = 'none';
+  document.getElementById('fetch-state').style.display = 'block';
+  document.getElementById('trackRows').innerHTML = '';
+  document.getElementById('progressBar').style.width = '0%';
+  document.getElementById('progressBar').style.background = 'var(--accent)';
+  document.getElementById('urlInput').value = '';
+  document.getElementById('burnBtn').disabled = false;
+  document.getElementById('cdDisc').classList.remove('spinning');
+  setPhase('');
+}
+
+function sortedKeys(obj) {
+  return Object.keys(obj).sort((a, b) => parseInt(a) - parseInt(b));
+}
+
+function countErrors(tracks) {
+  return Object.values(tracks).filter(t => t.status === 'error').length;
+}
+
+function statusLabel(s) {
+  if (s === 'downloading') return 'ripping...';
+  return s;
+}
+
+function esc(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
