@@ -305,6 +305,7 @@ def _check_burn_media():
 def _mp3_to_aiff(mp3_path, aiff_path):
     subprocess.run(
         [FFMPEG, '-y', '-i', str(mp3_path),
+         '-map_metadata', '-1',
          '-ar', '44100', '-ac', '2', '-sample_fmt', 's16',
          str(aiff_path)],
         capture_output=True, check=True, timeout=120
@@ -332,8 +333,7 @@ def _burn_job(job_id):
     for i, mp3 in enumerate(mp3s, 1):
         aiff = aiff_dir / f"{mp3.stem}.aiff"
         try:
-            if not aiff.exists():
-                _mp3_to_aiff(mp3, aiff)
+            _mp3_to_aiff(mp3, aiff)
             aiff_paths.append(aiff)
         except subprocess.CalledProcessError:
             continue
@@ -353,7 +353,7 @@ def _burn_job(job_id):
     job['burn_phase'] = 'burning'
     job['burn_progress'] = 0
 
-    cmd = [DRUTIL, '-drive', '1', 'burn', '-noverify', '-audio'] + [str(p) for p in aiff_paths]
+    cmd = [DRUTIL, '-drive', '1', 'burn', '-noverify', '-audio', str(aiff_dir)]
 
     try:
         proc = subprocess.Popen(
