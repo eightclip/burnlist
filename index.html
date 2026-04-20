@@ -327,6 +327,13 @@
     text-transform: uppercase;
   }
 
+  .dl-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
   .dl-btn {
     display: inline-flex;
     align-items: center;
@@ -343,11 +350,107 @@
   }
   .dl-btn:hover { background: #69f0ae; transform: translateY(-1px); }
 
+  .dl-btn-secondary {
+    background: transparent;
+    border: 1px solid var(--green);
+    color: var(--green);
+    font-size: 20px;
+    padding: 13px 24px;
+  }
+  .dl-btn-secondary:hover {
+    background: rgba(0,230,118,0.1);
+    transform: translateY(-1px);
+  }
+
   .dl-note {
     font-family: var(--mono);
     font-size: 10px;
     color: var(--muted);
     margin-top: 10px;
+  }
+
+  /* Burn section */
+  .burn-section {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px dashed var(--border);
+  }
+
+  .burn-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--muted);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+
+  .burn-duration {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+  .burn-duration.over { color: var(--red); }
+
+  .burn-cd-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--accent);
+    color: #000;
+    font-family: var(--display);
+    font-size: 24px;
+    letter-spacing: 2px;
+    padding: 12px 32px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .burn-cd-btn:hover { background: #ff5722; transform: translateY(-1px); }
+  .burn-cd-btn:disabled { background: #333; color: #555; cursor: not-allowed; }
+
+  .burn-help {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+
+  #burn-progress {
+    margin-top: 24px;
+  }
+  .burn-phase-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--accent2);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  .burn-status {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 8px;
+    min-height: 14px;
+    word-break: break-all;
+  }
+
+  #burn-result {
+    margin-top: 20px;
+    padding: 14px 18px;
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+  #burn-result.success {
+    border: 1px solid var(--green);
+    color: var(--green);
+  }
+  #burn-result.failure {
+    border: 1px solid var(--red);
+    color: var(--red);
   }
 
   /* Error zone */
@@ -440,9 +543,31 @@
     </div>
 
     <div id="download-zone">
-      <div class="dl-label">Burn complete &mdash; ZIP ready</div>
-      <button class="dl-btn" onclick="downloadZip()">&#8595; DOWNLOAD ZIP</button>
+      <div class="dl-label">Download ready</div>
+      <div class="dl-actions">
+        <button class="dl-btn" onclick="downloadZip()">&#8595; DOWNLOAD ZIP</button>
+        <button class="dl-btn dl-btn-secondary" onclick="revealInFinder()">REVEAL FOLDER</button>
+      </div>
       <div class="dl-note" id="dlNote"></div>
+
+      <div class="burn-section">
+        <div class="burn-label">Or burn straight to audio CD</div>
+        <div class="burn-duration" id="burnDuration"></div>
+        <button class="burn-cd-btn" id="burnCdBtn" onclick="burnAudioCd()">BURN AUDIO CD</button>
+        <div class="burn-help">Insert a blank CD, then click. Works in any CD player.</div>
+      </div>
+
+      <div id="burn-progress" style="display:none">
+        <div class="burn-phase-label" id="burnPhaseLabel">Converting...</div>
+        <div class="progress-wrap">
+          <div class="progress-bar" id="burnProgressBar" style="background: var(--accent2)"></div>
+        </div>
+        <div class="burn-status" id="burnStatusText"></div>
+      </div>
+
+      <div id="burn-result" style="display:none">
+        <div class="burn-result-label" id="burnResultLabel"></div>
+      </div>
     </div>
 
     <div id="error-zone">
@@ -554,6 +679,7 @@ async function poll() {
       ? `${trackCount - errors} tracks downloaded, ${errors} failed`
       : `${trackCount} tracks, full ID3 metadata`;
     document.getElementById('dlNote').textContent = note;
+    updateBurnDuration(data.duration_sec || 0);
   }
 }
 
@@ -616,10 +742,107 @@ function downloadZip() {
   window.location.href = `/download?job=${jobId}`;
 }
 
+function revealInFinder() {
+  fetch(`/reveal?job=${jobId}`, { method: 'POST' });
+}
+
+async function burnAudioCd() {
+  const btn = document.getElementById('burnCdBtn');
+  btn.disabled = true;
+  btn.textContent = 'STARTING...';
+
+  document.getElementById('burn-result').style.display = 'none';
+  document.getElementById('burn-progress').style.display = 'block';
+  document.getElementById('burnPhaseLabel').textContent = 'Preparing audio...';
+  document.getElementById('burnProgressBar').style.width = '0%';
+  document.getElementById('burnStatusText').textContent = '';
+
+  const r = await fetch(`/burn?job=${jobId}`, { method: 'POST' });
+  const d = await r.json();
+  if (d.error) {
+    burnFailed(d.error);
+    return;
+  }
+
+  if (burnPollTimer) clearInterval(burnPollTimer);
+  burnPollTimer = setInterval(pollBurn, 1200);
+}
+
+let burnPollTimer = null;
+
+async function pollBurn() {
+  if (!jobId) return;
+  let data;
+  try {
+    data = await (await fetch(`/status?job=${jobId}`)).json();
+  } catch (e) {
+    return;
+  }
+
+  const phase = data.burn_phase;
+  const bar = document.getElementById('burnProgressBar');
+  const label = document.getElementById('burnPhaseLabel');
+  const status = document.getElementById('burnStatusText');
+
+  if (phase === 'converting') {
+    const done = data.burn_converted || 0;
+    const total = data.burn_total || 1;
+    label.textContent = `Converting MP3 to AIFF (${done}/${total})`;
+    bar.style.width = `${(done / total) * 50}%`;
+  } else if (phase === 'burning') {
+    const p = data.burn_progress || 0;
+    label.textContent = `Burning disc (${p}%)`;
+    bar.style.width = `${50 + p / 2}%`;
+    status.textContent = data.burn_status || '';
+  } else if (phase === 'done') {
+    clearInterval(burnPollTimer);
+    bar.style.width = '100%';
+    bar.style.background = 'var(--green)';
+    label.textContent = 'Burn complete';
+    burnSucceeded();
+  } else if (phase === 'error') {
+    clearInterval(burnPollTimer);
+    burnFailed(data.burn_error || 'Burn failed');
+  }
+}
+
+function burnSucceeded() {
+  const r = document.getElementById('burn-result');
+  r.className = 'success';
+  r.style.display = 'block';
+  document.getElementById('burnResultLabel').textContent = 'Done. Eject the disc and you are good.';
+  const btn = document.getElementById('burnCdBtn');
+  btn.disabled = false;
+  btn.textContent = 'BURN ANOTHER';
+}
+
+function burnFailed(msg) {
+  const r = document.getElementById('burn-result');
+  r.className = 'failure';
+  r.style.display = 'block';
+  document.getElementById('burnResultLabel').textContent = `Burn failed: ${msg}`;
+  document.getElementById('burn-progress').style.display = 'none';
+  const btn = document.getElementById('burnCdBtn');
+  btn.disabled = false;
+  btn.textContent = 'RETRY BURN';
+}
+
+function updateBurnDuration(sec) {
+  if (!sec) { document.getElementById('burnDuration').textContent = ''; return; }
+  const mins = Math.floor(sec / 60);
+  const remainder = sec % 60;
+  const el = document.getElementById('burnDuration');
+  const overLimit = sec > 80 * 60;
+  el.textContent = `Total: ${mins}m ${remainder}s${overLimit ? ' - exceeds 80 min CD capacity' : ''}`;
+  el.className = 'burn-duration' + (overLimit ? ' over' : '');
+}
+
 function reset() {
   clearInterval(pollTimer);
+  if (burnPollTimer) clearInterval(burnPollTimer);
   jobId = null;
   pollTimer = null;
+  burnPollTimer = null;
   tracksBuilt = false;
 
   document.getElementById('input-section').style.display = 'block';
@@ -635,6 +858,11 @@ function reset() {
   document.getElementById('urlInput').value = '';
   document.getElementById('burnBtn').disabled = false;
   document.getElementById('cdDisc').classList.remove('spinning');
+  document.getElementById('burn-progress').style.display = 'none';
+  document.getElementById('burn-result').style.display = 'none';
+  const burnBtn = document.getElementById('burnCdBtn');
+  burnBtn.disabled = false;
+  burnBtn.textContent = 'BURN AUDIO CD';
   setPhase('');
 }
 
