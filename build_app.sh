@@ -53,44 +53,32 @@ done
 cp /tmp/burnlist-icon.png "$ICONSET/icon_512x512@2x.png"
 iconutil -c icns "$ICONSET" -o "$WORK_DIR/Burnlist.icns"
 
-echo "==> Assembling .app bundle…"
-mkdir -p "$APP_DIR/Contents/MacOS" "$APP_DIR/Contents/Resources"
+echo "==> Compiling AppleScript wrapper into .app stub…"
+osacompile -o "$APP_DIR" "$PROJECT_DIR/burnlist.applescript"
 
-cp "$WORK_DIR/Burnlist.icns"     "$APP_DIR/Contents/Resources/Burnlist.icns"
-cp "$PROJECT_DIR/server.py"      "$APP_DIR/Contents/Resources/server.py"
-cp "$PROJECT_DIR/index.html"     "$APP_DIR/Contents/Resources/index.html"
-cp "$PROJECT_DIR/launcher.sh"    "$APP_DIR/Contents/MacOS/$APP_NAME"
-cp "$PROJECT_DIR/setup.sh"       "$APP_DIR/Contents/Resources/setup.sh"
-chmod +x "$APP_DIR/Contents/MacOS/$APP_NAME" "$APP_DIR/Contents/Resources/setup.sh"
+echo "==> Installing app resources…"
+cp "$WORK_DIR/Burnlist.icns"  "$APP_DIR/Contents/Resources/applet.icns"
+cp "$PROJECT_DIR/launcher.sh" "$APP_DIR/Contents/Resources/launcher.sh"
+cp "$PROJECT_DIR/setup.sh"    "$APP_DIR/Contents/Resources/setup.sh"
+cp "$PROJECT_DIR/server.py"   "$APP_DIR/Contents/Resources/server.py"
+cp "$PROJECT_DIR/index.html"  "$APP_DIR/Contents/Resources/index.html"
+chmod +x "$APP_DIR/Contents/Resources/launcher.sh" \
+         "$APP_DIR/Contents/Resources/setup.sh"
 
-cat > "$APP_DIR/Contents/Info.plist" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleExecutable</key>
-  <string>${APP_NAME}</string>
-  <key>CFBundleIdentifier</key>
-  <string>com.eightclip.burnlist</string>
-  <key>CFBundleName</key>
-  <string>${APP_NAME}</string>
-  <key>CFBundleDisplayName</key>
-  <string>Burnlist</string>
-  <key>CFBundleVersion</key>
-  <string>1.0.0</string>
-  <key>CFBundleShortVersionString</key>
-  <string>1.0.0</string>
-  <key>CFBundlePackageType</key>
-  <string>APPL</string>
-  <key>CFBundleIconFile</key>
-  <string>Burnlist</string>
-  <key>LSMinimumSystemVersion</key>
-  <string>11.0</string>
-  <key>NSHighResolutionCapable</key>
-  <true/>
-</dict>
-</plist>
-PLIST
+echo "==> Patching Info.plist…"
+PB=/usr/libexec/PlistBuddy
+PLIST="$APP_DIR/Contents/Info.plist"
+# osacompile produces Info.plist with CFBundleName=applet etc. — rebrand it.
+$PB -c "Set :CFBundleName Burnlist"        "$PLIST"
+$PB -c "Set :CFBundleDisplayName Burnlist" "$PLIST" 2>/dev/null || \
+  $PB -c "Add :CFBundleDisplayName string Burnlist" "$PLIST"
+$PB -c "Set :CFBundleIdentifier com.eightclip.burnlist" "$PLIST" 2>/dev/null || \
+  $PB -c "Add :CFBundleIdentifier string com.eightclip.burnlist" "$PLIST"
+$PB -c "Set :CFBundleShortVersionString 1.1.0" "$PLIST" 2>/dev/null || \
+  $PB -c "Add :CFBundleShortVersionString string 1.1.0" "$PLIST"
+$PB -c "Set :CFBundleVersion 1.1.0" "$PLIST" 2>/dev/null || \
+  $PB -c "Add :CFBundleVersion string 1.1.0" "$PLIST"
+$PB -c "Add :NSHighResolutionCapable bool true" "$PLIST" 2>/dev/null || true
 
 echo "==> Clearing extended attributes…"
 xattr -cr "$APP_DIR" 2>/dev/null || true
